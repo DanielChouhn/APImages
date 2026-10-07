@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AP图床 · Daniel Chou</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0b0f1c 0%, #1a1f33 100%);
+      font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app {
+      max-width: 1280px;
+      width: 100%;
+    }
+
+    /* ===== 顶部栏 ===== */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #e6f0ff;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+
+    .header h1 .logo-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #2a7fff, #66d0ff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .header h1 .logo-icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: #fff;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .header h1 span {
+      background: linear-gradient(135deg, #66d0ff, #2a7fff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-sub {
+      font-size: 0.85rem;
+      color: #7f9bc0;
+      font-weight: 400;
+    }
+
+    /* ===== 认证区 ===== */
+    .auth-area {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    .auth-area button {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.5rem 1.4rem;
+      border-radius: 60px;
+      font-weight: 500;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.25s;
+      color: #c8dcf5;
+    }
+
+    .auth-area button:hover {
+      background: rgba(42, 127, 255, 0.15);
+      border-color: rgba(42, 127, 255, 0.3);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .auth-area .user-badge {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 60px;
+      padding: 0.25rem 1rem 0.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .auth-area .user-badge span {
+      font-weight: 600;
+      color: #e6f0ff;
+      font-size: 0.9rem;
+    }
+
+    .auth-area .user-badge button {
+      background: transparent;
+      border: none;
+      color: #7f9bc0;
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 40px;
+      transition: 0.15s;
+    }
+
+    .auth-area .user-badge button:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: white;
+    }
+
+    /* ===== 上传卡片 ===== */
+    .upload-card {
+      background: rgba(18, 30, 50, 0.6);
+      backdrop-filter: blur(16px);
+      border-radius: 28px;
+      padding: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.6);
+      margin-bottom: 2rem;
+    }
+
+    .upload-zone {
+      border: 2px dashed rgba(102, 208, 255, 0.3);
+      border-radius: 20px;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: rgba(102, 208, 255, 0.03);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      border-color: rgba(102, 208, 255, 0.7);
+      background: rgba(102, 208, 255, 0.08);
+      transform: scale(1.005);
+    }
+
+    .upload-zone .upload-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 1rem;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(42, 127, 255, 0.2), rgba(102, 208, 255, 0.15));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(102, 208, 255, 0.2);
+    }
+
+    .upload-zone .upload-icon svg {
+      width: 26px;
+      height: 26px;
+      stroke: #66d0ff;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .upload-zone .upload-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #e6f0ff;
+      margin-bottom: 0.4rem;
+    }
+
+    .upload-zone .upload-hint {
+      font-size: 0.85rem;
+      color: #7f9bc0;
+    }
+
+    .upload-zone .upload-hint strong {
+      color: #66d0ff;
+    }
+
+    .upload-preview {
+      display: none;
+      margin-top: 1.2rem;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.2rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      flex-wrap: wrap;
+    }
+
+    .upload-preview.show {
+      display: flex;
+    }
+
+    .upload-preview img {
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+
+    .upload-preview .file-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .upload-preview .file-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #e6f0ff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .upload-preview .file-size {
+      font-size: 0.78rem;
+      color: #7f9bc0;
+      margin-top: 0.15rem;
+    }
+
+    .upload-preview .remove-btn {
+      background: rgba(255, 80, 80, 0.1);
+      border: 1px solid rgba(255, 80, 80, 0.2);
+      color: #ff6b6b;
+      padding: 0.35rem 0.9rem;
+      border-radius: 40px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: 0.2s;
+      flex-shrink: 0;
+    }
+
+    .upload-preview .remove-btn:hover {
+      background: rgba(255, 80, 80, 0.2);
+      border-color: rgba(255, 80, 80, 0.4);
+    }
+
+    .upload-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.8rem;
+      margin-top: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2a7fff, #1a5fcf);
+      color: white;
+      border: none;
+      padding: 0.7rem 2rem;
+      border-radius: 60px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: 0.25s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 6px 18px rgba(42, 127, 255, 0.25);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(42, 127, 255, 0.35);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.04);
+      color: #c8dcf5;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.7rem 2rem;
+      border-radius: 60px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: 0.25s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* ===== 相册区域 ===== */
+    .gallery-section {
+      background: rgba(18, 30, 50, 0.6);
+      backdrop-filter: blur(16px);
+      border-radius: 28px;
+      padding: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.6);
+    }
+
+    .gallery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+
+    .gallery-header h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #e6f0ff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .gallery-header h2 .count-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #66d0ff;
+      background: rgba(102, 208, 255, 0.12);
+      border: 1px solid rgba(102, 208, 255, 0.2);
+      padding: 0.15rem 0.7rem;
+      border-radius: 40px;
+    }
+
+    .gallery-header .refresh-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #7f9bc0;
+      padding: 0.4rem 1.2rem;
+      border-radius: 40px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: 0.2s;
+    }
+
+    .gallery-header .refresh-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #c8dcf5;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .image-card {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .image-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(102, 208, 255, 0.25);
+      box-shadow: 0 16px 32px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .image-card .img-wrap {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      background: #0a0e17;
+      position: relative;
+    }
+
+    .image-card .img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.5s ease;
+    }
+
+    .image-card:hover .img-wrap img {
+      transform: scale(1.06);
+    }
+
+    .image-card .img-meta {
+      padding: 0.8rem 1rem;
+    }
+
+    .image-card .img-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #e6f0ff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.35rem;
+    }
+
+    .image-card .img-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+      color: #7f9bc0;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+
+    .image-card .img-uploader {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .image-card .img-uploader .avatar-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2a7fff, #66d0ff);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.55rem;
+      color: #fff;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .image-card .img-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 0.4rem;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .image-card:hover .img-actions {
+      opacity: 1;
+    }
+
+    .image-card .img-actions button {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(10, 16, 28, 0.75);
+      backdrop-filter: blur(8px);
+      color: #c8dcf5;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.2s;
+      padding: 0;
+    }
+
+    .image-card .img-actions button:hover {
+      background: rgba(42, 127, 255, 0.7);
+      border-color: rgba(42, 127, 255, 0.8);
+      color: #fff;
+    }
+
+    .image-card .img-actions button svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    /* ===== 空状态 ===== */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #7f9bc0;
+    }
+
+    .empty-state .empty-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1rem;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.03);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .empty-state .empty-icon svg {
+      width: 32px;
+      height: 32px;
+      stroke: #4a5a7a;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .empty-state p {
+      font-size: 0.95rem;
+    }
+
+    /* ===== 加载状态 ===== */
+    .loading-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #7f9bc0;
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      border: 2.5px solid rgba(102, 208, 255, 0.15);
+      border-top-color: #66d0ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 0.8rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ===== 弹窗 ===== */
+    .auth-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(12px);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .auth-overlay.open {
+      display: flex;
+    }
+
+    .auth-card {
+      background: #1a1f38;
+      border: 1px solid #40508b;
+      border-radius: 28px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 30px 50px rgba(0, 0, 0, 0.7);
+      color: #e0e7ff;
+    }
+
+    .auth-card h3 {
+      font-size: 1.4rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      color: #c6d4ff;
+    }
+
+    .auth-card input {
+      width: 100%;
+      padding: 0.85rem 1.1rem;
+      background: #0f1424;
+      border: 1px solid #334066;
+      border-radius: 12px;
+      color: white;
+      font-size: 0.92rem;
+      margin-bottom: 1rem;
+      outline: none;
+      transition: 0.2s;
+    }
+
+    .auth-card input:focus {
+      border-color: #5f7bfa;
+      box-shadow: 0 0 0 3px rgba(95, 123, 250, 0.15);
+    }
+
+    .auth-card .auth-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .auth-card .auth-btn {
+      padding: 0.85rem;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      background: linear-gradient(135deg, #3f51b5, #1e2b6f);
+      color: white;
+      transition: 0.2s;
+    }
+
+    .auth-card .auth-btn:hover:not(:disabled) {
+      transform: scale(1.02);
+      box-shadow: 0 8px 18px rgba(31, 58, 180, 0.3);
+    }
+
+    .auth-card .auth-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .auth-card .auth-switch {
+      background: none;
+      border: none;
+      color: #8892c4;
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0.3rem;
+      transition: 0.2s;
+    }
+
+    .auth-card .auth-switch:hover {
+      color: #c6d4ff;
+    }
+
+    .auth-card .auth-close {
+      background: none;
+      border: none;
+      color: #8892c4;
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0.3rem;
+      margin-top: 0.5rem;
+    }
+
+    .auth-card .auth-close:hover {
+      color: #c6d4ff;
+    }
+
+    /* ===== Toast ===== */
+    .toast-message {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(10, 20, 35, 0.92);
+      backdrop-filter: blur(12px);
+      color: #e6f0ff;
+      padding: 0.75rem 2rem;
+      border-radius: 60px;
+      font-size: 0.95rem;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+      z-index: 999;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    .toast-message.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ===== 上传进度条 ===== */
+    .upload-progress {
+      display: none;
+      margin-top: 1rem;
+      padding: 0.8rem 1.2rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .upload-progress.show {
+      display: flex;
+    }
+
+    .upload-progress .progress-bar {
+      flex: 1;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .upload-progress .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2a7fff, #66d0ff);
+      width: 0%;
+      transition: width 0.25s ease;
+      border-radius: 5px;
+    }
+
+    .upload-progress .progress-text {
+      font-size: 0.8rem;
+      color: #66d0ff;
+      font-weight: 600;
+      min-width: 40px;
+      text-align: right;
+    }
+
+    /* ===== 响应式 ===== */
+    @media (max-width: 768px) {
+      body { padding: 1.2rem 1rem; }
+
+      .header h1 { font-size: 1.4rem; }
+
+      .header h1 .logo-icon {
+        width: 32px;
+        height: 32px;
+      }
+
+      .header h1 .logo-icon svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .upload-card,
+      .gallery-section {
+        padding: 1.4rem;
+        border-radius: 22px;
+      }
+
+      .upload-zone {
+        padding: 1.8rem 1rem;
+      }
+
+      .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.9rem;
+      }
+
+      .image-card .img-meta {
+        padding: 0.6rem 0.8rem;
+      }
+
+      .image-card .img-name {
+        font-size: 0.8rem;
+      }
+
+      .image-card .img-actions {
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .gallery-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .upload-actions {
+        flex-direction: column;
+      }
+
+      .upload-actions button {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- 顶部栏 -->
+  <header class="header">
+    <div>
+      <h1>
+        <span class="logo-icon">
+          <svg viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="3"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </span>
+        AP<span>图床</span>
+      </h1>
+      <p class="header-sub">上传图片 · 记录时间与上传者 · 基于 Supabase 存储</p>
+    </div>
+    <div class="auth-area" id="authArea"></div>
+  </header>
+
+  <!-- 上传卡片 -->
+  <div class="upload-card">
+    <div class="upload-zone" id="uploadZone">
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <div class="upload-title">点击或拖拽图片到此处上传</div>
+      <div class="upload-hint">支持 <strong>JPG / PNG / GIF / WebP</strong>，单张不超过 10MB</div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none" />
+    </div>
+
+    <div class="upload-preview" id="uploadPreview">
+      <img id="previewImg" src="" alt="预览">
+      <div class="file-info">
+        <div class="file-name" id="previewName">未选择文件</div>
+        <div class="file-size" id="previewSize"></div>
+      </div>
+      <button class="remove-btn" id="removeFileBtn">移除</button>
+    </div>
+
+    <div class="upload-progress" id="uploadProgress">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <span class="progress-text" id="progressText">0%</span>
+    </div>
+
+    <div class="upload-actions">
+      <button class="btn-secondary" id="clearBtn">清空</button>
+      <button class="btn-primary" id="uploadBtn" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        上传图片
+      </button>
+    </div>
+  </div>
+
+  <!-- 相册区域 -->
+  <div class="gallery-section">
+    <div class="gallery-header">
+      <h2>
+        我的相册
+        <span class="count-badge" id="imageCount">0</span>
+      </h2>
+      <button class="refresh-btn" id="refreshBtn">刷新</button>
+    </div>
+    <div id="galleryContainer">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <div>加载图片中...</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 认证弹窗 -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <h3 id="authTitle">登录</h3>
+    <input type="text" id="authUsername" placeholder="用户名" autocomplete="off">
+    <input type="password" id="authPassword" placeholder="密码 (至少6位)">
+    <div class="auth-actions">
+      <button class="auth-btn" id="authConfirmBtn">登录</button>
+      <button class="auth-switch" id="authSwitchBtn">没有账号？去注册</button>
+      <button class="auth-close" id="authCloseBtn">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-message" id="toast"></div>
+
+<script>
+  (function() {
+    'use strict';
+
+    // ================================================================
+    // Supabase 配置
+    // ================================================================
+    // 当前项目（用户 / 认证 / 图床数据库）
+    const SUPABASE_URL = 'https://rihfowjielhukozkrzoq.supabase.co/';
+    const SUPABASE_ANON_KEY =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpaGZvd2ppZWxodWtvemtyem9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODY5MjksImV4cCI6MjA5ODk2MjkyOX0.xGximEvs6ZORcXjjWcJftu-fRvQkkpIZI0tWzixnYD0';
+
+    // ★★★ 另一个 Supabase 空间（图床存储用） ★★★
+    // 请在下方填入您「另一个 Supabase 空间」的 URL 和 anon key
+    const IMAGE_SUPABASE_URL = 'https://secjxmrribmllhhxpgjw.supabase.co';
+    const IMAGE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlY2p4bXJyaWJtbGxoaHhwZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzNjEwODYsImV4cCI6MjEwNjkzNzA4Nn0.f25E2_XU3wvWNfKGMF4pt8MSPkfY370DDeJ1Jnwb2eI';
+
+    // 存储桶名称（请确保该桶在另一个空间中已创建，并设为公开可读）
+    const STORAGE_BUCKET = 'ap-images';
+
+    // 图床数据库表名（在当前项目中记录上传信息）
+    const IMAGE_TABLE = 'ap_images';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const imageSupabase = window.supabase.createClient(IMAGE_SUPABASE_URL, IMAGE_SUPABASE_ANON_KEY);
+
+    // ================================================================
+    // DOM
+    // ================================================================
+    const authArea = document.getElementById('authArea');
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadPreview = document.getElementById('uploadPreview');
+    const previewImg = document.getElementById('previewImg');
+    const previewName = document.getElementById('previewName');
+    const previewSize = document.getElementById('previewSize');
+    const removeFileBtn = document.getElementById('removeFileBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const galleryContainer = document.getElementById('galleryContainer');
+    const imageCount = document.getElementById('imageCount');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    const authOverlay = document.getElementById('authOverlay');
+    const authTitle = document.getElementById('authTitle');
+    const authUsername = document.getElementById('authUsername');
+    const authPassword = document.getElementById('authPassword');
+    const authConfirmBtn = document.getElementById('authConfirmBtn');
+    const authSwitchBtn = document.getElementById('authSwitchBtn');
+    const authCloseBtn = document.getElementById('authCloseBtn');
+
+    const toastEl = document.getElementById('toast');
+
+    // ================================================================
+    // 状态
+    // ================================================================
+    let currentUser = null;
+    let userProfile = null;
+    let selectedFile = null;
+    let isAuthLoginMode = true;
+    let isUploading = false;
+    let myImages = [];
+
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+    // ================================================================
+    // 工具函数
+    // ================================================================
+    function showToast(msg, duration = 2800) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastEl._timer);
+      toastEl._timer = setTimeout(() => toastEl.classList.remove('show'), duration);
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '未知';
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diff = now - d;
+      if (diff < 60 * 1000) return '刚刚';
+      if (diff < 60 * 60 * 1000) return Math.floor(diff / 60000) + ' 分钟前';
+      if (diff < 24 * 60 * 60 * 1000) return Math.floor(diff / 3600000) + ' 小时前';
+      if (diff < 7 * 24 * 60 * 60 * 1000) return Math.floor(diff / 86400000) + ' 天前';
+      return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[m]);
+    }
+
+    function getAvatarChar(name) {
+      if (!name) return '?';
+      return name.charAt(0).toUpperCase();
+    }
+
+    // ================================================================
+    // 认证相关（复用 C++小游戏大全 的登录系统）
+    // ================================================================
+    async function checkAuth() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        currentUser = session.user;
+        await loadUserProfile(currentUser.id);
+      } else {
+        currentUser = null;
+        userProfile = null;
+      }
+      renderAuthArea();
+      updateUploadAvailability();
+    }
+
+    async function loadUserProfile(userId) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username, honor, level, exp')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('获取 profile 失败', error);
+        userProfile = { username: '玩家', id: userId };
+        return;
+      }
+
+      if (data) {
+        userProfile = {
+          username: data.username || '玩家',
+          honor: data.honor || '玩家',
+          level: data.level || 1,
+          exp: data.exp || 0,
+          id: userId
+        };
+      } else {
+        const fallbackUsername = currentUser.user_metadata?.username || '玩家';
+        await supabase.from('profiles').insert([{
+          id: userId,
+          username: fallbackUsername,
+          honor: '玩家',
+          level: 1,
+          exp: 0
+        }]);
+        userProfile = { username: fallbackUsername, id: userId };
+      }
+    }
+
+    function renderAuthArea() {
+      if (currentUser && userProfile) {
+        authArea.innerHTML = `
+          <div class="user-badge">
+            <span>${escapeHtml(userProfile.username)}</span>
+            <button id="logoutBtn">退出</button>
+          </div>
+        `;
+        document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+      } else {
+        authArea.innerHTML = `
+          <button id="loginBtn">登录</button>
+          <button id="signupBtn">注册</button>
+        `;
+        document.getElementById('loginBtn')?.addEventListener('click', () => openAuthModal(true));
+        document.getElementById('signupBtn')?.addEventListener('click', () => openAuthModal(false));
+      }
+    }
+
+    function openAuthModal(isLoginMode) {
+      isAuthLoginMode = isLoginMode;
+      authTitle.textContent = isLoginMode ? '登录' : '注册';
+      authConfirmBtn.textContent = isLoginMode ? '登录' : '注册';
+      authSwitchBtn.textContent = isLoginMode ? '没有账号？去注册' : '已有账号？去登录';
+      authUsername.value = '';
+      authPassword.value = '';
+      authOverlay.classList.add('open');
+      setTimeout(() => authUsername.focus(), 100);
+    }
+
+    function closeAuthModal() {
+      authOverlay.classList.remove('open');
+    }
+
+    authCloseBtn.addEventListener('click', closeAuthModal);
+    authOverlay.addEventListener('click', (e) => {
+      if (e.target === authOverlay) closeAuthModal();
+    });
+
+    authSwitchBtn.addEventListener('click', () => {
+      openAuthModal(!isAuthLoginMode);
+    });
+
+    authConfirmBtn.addEventListener('click', async () => {
+      const username = authUsername.value.trim();
+      const password = authPassword.value.trim();
+
+      if (!username) { showToast('请输入用户名'); return; }
+      if (!password || password.length < 6) { showToast('密码至少需要6位'); return; }
+
+      authConfirmBtn.disabled = true;
+      authConfirmBtn.textContent = '处理中...';
+
+      try {
+        if (isAuthLoginMode) {
+          const email = `${username}@mygame.com`;
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) {
+            showToast('登录失败: ' + error.message);
+          } else {
+            showToast('登录成功');
+            closeAuthModal();
+            await checkAuth();
+            await loadMyImages();
+          }
+        } else {
+          const { data: existing } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('username', username)
+            .maybeSingle();
+
+          if (existing) { showToast('用户名已被使用'); return; }
+
+          const email = `${username}@mygame.com`;
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: { data: { username } }
+          });
+
+          if (signUpError) { showToast('注册失败: ' + signUpError.message); return; }
+
+          if (signUpData.user) {
+            await supabase.from('profiles').upsert([{
+              id: signUpData.user.id,
+              username,
+              honor: '玩家',
+              level: 1,
+              exp: 0
+            }], { onConflict: 'id' });
+
+            showToast('注册成功，欢迎 ' + username);
+            closeAuthModal();
+            await checkAuth();
+            await loadMyImages();
+          }
+        }
+      } catch (e) {
+        showToast('发生错误: ' + e.message);
+      } finally {
+        authConfirmBtn.disabled = false;
+        authConfirmBtn.textContent = isAuthLoginMode ? '登录' : '注册';
+      }
+    });
+
+    async function handleLogout() {
+      await supabase.auth.signOut();
+      currentUser = null;
+      userProfile = null;
+      myImages = [];
+      renderAuthArea();
+      updateUploadAvailability();
+      renderGallery();
+      showToast('已退出');
+    }
+
+    // ================================================================
+    // 上传可用性
+    // ================================================================
+    function updateUploadAvailability() {
+      if (!currentUser) {
+        uploadBtn.disabled = true;
+        uploadZone.style.opacity = '0.5';
+        uploadZone.style.pointerEvents = 'none';
+      } else {
+        uploadBtn.disabled = !selectedFile;
+        uploadZone.style.opacity = '1';
+        uploadZone.style.pointerEvents = 'auto';
+      }
+    }
+
+    // ================================================================
+    // 文件选择与预览
+    // ================================================================
+    uploadZone.addEventListener('click', () => {
+      if (!currentUser) { showToast('请先登录后再上传'); return; }
+      fileInput.click();
+    });
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!currentUser) return;
+      uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      if (!currentUser) { showToast('请先登录后再上传'); return; }
+      const files = e.dataTransfer.files;
+      if (files.length > 0) handleFileSelect(files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+    });
+
+    function handleFileSelect(file) {
+      if (!file.type.startsWith('image/')) {
+        showToast('请选择图片文件');
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        showToast(`文件过大 (${formatFileSize(file.size)})，最大 10MB`);
+        return;
+      }
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        previewImg.src = ev.target.result;
+        previewName.textContent = file.name;
+        previewSize.textContent = formatFileSize(file.size);
+        uploadPreview.classList.add('show');
+        uploadBtn.disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearSelectedFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      uploadPreview.classList.remove('show');
+      previewImg.src = '';
+      previewName.textContent = '未选择文件';
+      previewSize.textContent = '';
+      uploadBtn.disabled = true;
+      uploadProgress.classList.remove('show');
+      progressFill.style.width = '0%';
+      progressText.textContent = '0%';
+    }
+
+    removeFileBtn.addEventListener('click', clearSelectedFile);
+    clearBtn.addEventListener('click', clearSelectedFile);
+
+    // ================================================================
+    // 生成唯一文件名
+    // ================================================================
+    function generateFileName(originalName) {
+      const ext = originalName.includes('.') ? originalName.substring(originalName.lastIndexOf('.')) : '.png';
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8);
+      return `${timestamp}_${random}${ext}`;
+    }
+
+    // ================================================================
+    // 上传图片
+    // ================================================================
+    uploadBtn.addEventListener('click', async () => {
+      if (!currentUser) { showToast('请先登录'); return; }
+      if (!selectedFile) { showToast('请先选择图片'); return; }
+      if (isUploading) return;
+
+      isUploading = true;
+      uploadBtn.disabled = true;
+      uploadBtn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;margin:0;"></span> 上传中...';
+      uploadProgress.classList.add('show');
+      progressFill.style.width = '0%';
+      progressText.textContent = '0%';
+
+      const fileName = generateFileName(selectedFile.name);
+      const filePath = fileName;
+
+      try {
+        // 1. 上传到「另一个 Supabase 空间」的存储桶
+        const { error: uploadError } = await imageSupabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(filePath, selectedFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) throw new Error('上传失败: ' + uploadError.message);
+
+        progressFill.style.width = '70%';
+        progressText.textContent = '70%';
+
+        // 2. 获取公开访问 URL
+        const { data: urlData } = imageSupabase.storage
+          .from(STORAGE_BUCKET)
+          .getPublicUrl(filePath);
+
+        const publicUrl = urlData?.publicUrl;
+        if (!publicUrl) throw new Error('获取图片链接失败');
+
+        progressFill.style.width = '85%';
+        progressText.textContent = '85%';
+
+        // 3. 在当前项目的数据库中记录上传信息（文件名、URL、上传时间、上传者）
+        const { error: dbError } = await supabase
+          .from(IMAGE_TABLE)
+          .insert([{
+            file_name: selectedFile.name,
+            storage_path: filePath,
+            public_url: publicUrl,
+            file_size: selectedFile.size,
+            file_type: selectedFile.type,
+            uploader_id: currentUser.id,
+            uploader_name: userProfile?.username || '未知用户',
+            created_at: new Date().toISOString()
+          }]);
+
+        if (dbError) {
+          // 数据库记录失败时，删除已上传的文件
+          await imageSupabase.storage.from(STORAGE_BUCKET).remove([filePath]);
+          throw new Error('记录上传信息失败: ' + dbError.message);
+        }
+
+        progressFill.style.width = '100%';
+        progressText.textContent = '100%';
+
+        showToast('图片上传成功');
+        clearSelectedFile();
+        await loadMyImages();
+
+      } catch (err) {
+        console.error('上传错误:', err);
+        showToast('上传失败: ' + err.message);
+        progressFill.style.width = '0%';
+        progressText.textContent = '0%';
+      } finally {
+        isUploading = false;
+        uploadBtn.disabled = !selectedFile;
+        uploadBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          上传图片
+        `;
+        setTimeout(() => uploadProgress.classList.remove('show'), 1200);
+      }
+    });
+
+    // ================================================================
+    // 加载我的图片
+    // ================================================================
+    async function loadMyImages() {
+      if (!currentUser) {
+        myImages = [];
+        renderGallery();
+        return;
+      }
+
+      galleryContainer.innerHTML = `
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <div>加载图片中...</div>
+        </div>
+      `;
+
+      try {
+        const { data, error } = await supabase
+          .from(IMAGE_TABLE)
+          .select('*')
+          .eq('uploader_id', currentUser.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.warn('加载图片失败:', error);
+          // 如果表不存在，给出提示
+          if (error.code === '42P01') {
+            galleryContainer.innerHTML = `
+              <div class="empty-state">
+                <div class="empty-icon">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                </div>
+                <p>数据表 <strong>${IMAGE_TABLE}</strong> 尚未创建</p>
+                <p style="font-size:0.82rem;margin-top:0.5rem;color:#5a7a9f;">
+                  请先在当前 Supabase 项目中创建该表
+                </p>
+              </div>
+            `;
+            imageCount.textContent = '0';
+            return;
+          }
+          throw error;
+        }
+
+        myImages = data || [];
+        renderGallery();
+
+      } catch (err) {
+        console.error('加载图片异常:', err);
+        galleryContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <p>加载失败：${escapeHtml(err.message)}</p>
+          </div>
+        `;
+        imageCount.textContent = '0';
+      }
+    }
+
+    // ================================================================
+    // 渲染相册
+    // ================================================================
+    function renderGallery() {
+      imageCount.textContent = myImages.length;
+
+      if (!currentUser) {
+        galleryContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </div>
+            <p>登录后即可查看您上传的图片</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (myImages.length === 0) {
+        galleryContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </div>
+            <p>还没有上传任何图片</p>
+            <p style="font-size:0.82rem;margin-top:0.5rem;color:#5a7a9f;">点击上方区域上传第一张图片吧</p>
+          </div>
+        `;
+        return;
+      }
+
+      const html = myImages.map(img => {
+        const uploaderName = img.uploader_name || '未知用户';
+        const avatarChar = getAvatarChar(uploaderName);
+        const timeText = formatDate(img.created_at);
+        const sizeText = img.file_size ? formatFileSize(img.file_size) : '';
+
+        return `
+          <div class="image-card" data-id="${img.id}">
+            <div class="img-wrap">
+              <img src="${escapeHtml(img.public_url)}" alt="${escapeHtml(img.file_name)}" loading="lazy">
+              <div class="img-actions">
+                <button class="copy-url-btn" data-url="${escapeHtml(img.public_url)}" title="复制链接">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                  </svg>
+                </button>
+                <button class="open-url-btn" data-url="${escapeHtml(img.public_url)}" title="打开原图">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+                    <path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="img-meta">
+              <div class="img-name" title="${escapeHtml(img.file_name)}">${escapeHtml(img.file_name)}</div>
+              <div class="img-info">
+                <span class="img-uploader">
+                  <span class="avatar-dot">${avatarChar}</span>
+                  ${escapeHtml(uploaderName)}
+                </span>
+                <span>${timeText}</span>
+              </div>
+              ${sizeText ? `<div class="img-info" style="margin-top:0.25rem;"><span>${sizeText}</span></div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      galleryContainer.innerHTML = `<div class="gallery-grid">${html}</div>`;
+
+      // 绑定复制链接按钮
+      galleryContainer.querySelectorAll('.copy-url-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const url = btn.dataset.url;
+          try {
+            await navigator.clipboard.writeText(url);
+            showToast('链接已复制');
+          } catch {
+            showToast('复制失败，请手动复制');
+          }
+        });
+      });
+
+      // 绑定打开原图按钮
+      galleryContainer.querySelectorAll('.open-url-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          window.open(btn.dataset.url, '_blank', 'noopener');
+        });
+      });
+    }
+
+    refreshBtn.addEventListener('click', () => {
+      if (!currentUser) { showToast('请先登录'); return; }
+      loadMyImages();
+      showToast('已刷新');
+    });
+
+    // ================================================================
+    // 初始化
+    // ================================================================
+    async function init() {
+      await checkAuth();
+      await loadMyImages();
+
+      supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          currentUser = session.user;
+          loadUserProfile(currentUser.id).then(() => {
+            renderAuthArea();
+            updateUploadAvailability();
+            loadMyImages();
+          });
+        } else if (event === 'SIGNED_OUT') {
+          currentUser = null;
+          userProfile = null;
+          myImages = [];
+          renderAuthArea();
+          updateUploadAvailability();
+          renderGallery();
+        }
+      });
+
+      updateUploadAvailability();
+    }
+
+    init();
+
+  })();
+</script>
+
+</body>
+</html>
